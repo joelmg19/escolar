@@ -1,8 +1,12 @@
-import { Database } from '@sqlitecloud/drivers';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Switch, Text, View } from 'react-native';
-import { transformarFilas } from '../../contexts/utils';
-const db = new Database("sqlitecloud://cfae4dosnz.g6.sqlite.cloud:8860/ninos?apikey=bZ7ER6EQchMRNPsaLGbXbLbNFvspuuO47bua32jEOJw");
+import db from '../../db';
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+} from 'firebase/firestore';
 
 
 type Niño = {
@@ -13,37 +17,34 @@ type Niño = {
   presente: boolean;
 };
 
+
 export default function AsistenciaScreen() {
   const [ninos, setNinos] = useState<Niño[]>([]);
   const [cargando, setCargando] = useState(true);
 
+  useEffect(() => {
+    const cargarNinos = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'ninos'));
+        const data = querySnapshot.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<Niño, 'id'>),
+          presente: (d.data() as any).presente === true,
+        }));
+        setNinos(data);
+      } catch (error) {
+        console.error('Error al obtener los niños:', error);
+      } finally {
+        setCargando(false);
+      }
+    };
 
-useEffect(() => {
-  const cargarNinos = async () => {
-    try {
-      const result = await db.sql`SELECT * FROM ninos;`;
-      console.log('Resultado SQL:', result);
-      const objetos = transformarFilas(result);
-
-      const transformados = objetos.map((niño) => ({
-        ...niño,
-        presente: niño.presente === 1,
-      }));
-
-      setNinos(transformados);
-    } catch (error) {
-      console.error('Error al obtener los niños:', error);
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  cargarNinos();
-}, []);
+    cargarNinos();
+  }, []);
 
   const actualizarPresente = async (id: string, value: boolean) => {
     try {
-      await db.sql`UPDATE ninos SET presente = ${value ? 1 : 0} WHERE id = ${id};`;
+      await updateDoc(doc(db, 'ninos', id), { presente: value });
       const actualizados = ninos.map((niño) =>
         niño.id === id ? { ...niño, presente: value } : niño
       );

@@ -1,4 +1,3 @@
-import { Database } from '@sqlitecloud/drivers';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,9 +8,15 @@ import {
   Text,
   View,
 } from 'react-native';
-import { transformarFilas } from '../../contexts/utils';
-
-const db = new Database("sqlitecloud://cfae4dosnz.g6.sqlite.cloud:8860/ninos?apikey=bZ7ER6EQchMRNPsaLGbXbLbNFvspuuO47bua32jEOJw");
+import db from '../../db';
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  query,
+  orderBy,
+} from 'firebase/firestore';
 
 type Niño = {
   id: string;
@@ -31,16 +36,14 @@ export default function PagosScreen() {
 
   const obtenerNinos = async () => {
     try {
-      const result = await db.sql`SELECT * FROM ninos ORDER BY apellido ASC;`;
-      console.log('Resultado SQL:', result);
-      const objetos = transformarFilas(result);
-  
-      const transformados = objetos.map((niño) => ({
-        ...niño,
-        pago: niño.pagado === 1,
+      const q = query(collection(db, 'ninos'), orderBy('apellido'));
+      const querySnapshot = await getDocs(q);
+      const datos = querySnapshot.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<Niño, 'id' | 'pago'>),
+        pago: (d.data() as any).pagado === true,
       }));
-  
-      setNinos(transformados);
+      setNinos(datos);
     } catch (error) {
       console.error('Error al obtener datos:', error);
     } finally {
@@ -50,7 +53,7 @@ export default function PagosScreen() {
 
   const actualizarPago = async (id: string, valor: boolean) => {
     try {
-      await db.sql`UPDATE ninos SET pagado = ${valor ? 1 : 0} WHERE id = ${id};`;
+      await updateDoc(doc(db, 'ninos', id), { pagado: valor });
       setNinos((prev) =>
         prev.map((nino) =>
           nino.id === id ? { ...nino, pago: valor } : nino
