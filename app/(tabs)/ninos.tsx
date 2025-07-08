@@ -12,9 +12,14 @@ import {
   ScrollView,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { Database } from '@sqlitecloud/drivers';
-
-const db = new Database("sqlitecloud://cfae4dosnz.g6.sqlite.cloud:8860/ninos?apikey=bZ7ER6EQchMRNPsaLGbXbLbNFvspuuO47bua32jEOJw");
+import db from '../../db';
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  orderBy,
+} from 'firebase/firestore';
 
 type Niño = {
   id: string;
@@ -43,8 +48,13 @@ export default function NinosScreen() {
 
   const obtenerNinos = async () => {
     try {
-      const result = await db.sql`SELECT * FROM ninos ORDER BY apellido ASC;`;
-      setNinos(result.rows);
+      const q = query(collection(db, 'ninos'), orderBy('apellido'));
+      const querySnapshot = await getDocs(q);
+      const data = querySnapshot.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<Niño, 'id'>),
+      }));
+      setNinos(data);
     } catch (error) {
       console.error('Error al obtener niños:', error);
     }
@@ -57,12 +67,14 @@ export default function NinosScreen() {
     }
 
     try {
-      const nuevoID = crypto.randomUUID();
-
-      await db.sql`
-        INSERT INTO ninos (id, nombre, apellido, curso, colegio, presente, pagado)
-        VALUES (${nuevoID}, ${nombre}, ${apellido}, ${curso}, 'Sochides', 0, 0);
-      `;
+      await addDoc(collection(db, 'ninos'), {
+        nombre,
+        apellido,
+        curso,
+        colegio: 'Sochides',
+        presente: false,
+        pagado: false,
+      });
 
       setNombre('');
       setApellido('');
