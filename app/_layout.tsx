@@ -2,9 +2,9 @@ import { Slot } from 'expo-router';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 
 function RootLayoutNav() {
-  const { isLoggedIn } = useAuth();
+  const { user } = useAuth();
 
-  if (!isLoggedIn) {
+  if (!user) {
     return <Slot name="(auth)" />;
   }
 

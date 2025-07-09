@@ -1,25 +1,66 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { auth, db } from '../firebaseConfig';
+import {
+  User,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithCredential,
+  signOut,
+  AuthCredential,
+} from 'firebase/auth';
+import { addDoc, collection } from 'firebase/firestore';
 
 type AuthContextType = {
-  isLoggedIn: boolean;
-  login: () => void;
-  logout: () => void;
+  user: User | null;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
+  loginWithCredential: (credential: AuthCredential) => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
-  isLoggedIn: false,
-  login: () => {},
-  logout: () => {},
+  user: null,
+  login: async () => {},
+  register: async () => {},
+  loginWithCredential: async () => {},
+  logout: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
-  const login = () => setIsLoggedIn(true);
-  const logout = () => setIsLoggedIn(false);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => setUser(u));
+    return unsubscribe;
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const register = async (email: string, password: string) => {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    await addDoc(collection(db, 'login'), {
+      uid: cred.user.uid,
+      email: cred.user.email,
+    });
+  };
+
+  const loginWithCredential = async (credential: AuthCredential) => {
+    const result = await signInWithCredential(auth, credential);
+    await addDoc(collection(db, 'login'), {
+      uid: result.user.uid,
+      email: result.user.email,
+    });
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+  };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
+    <AuthContext.Provider value={{ user, login, register, loginWithCredential, logout }}>
       {children}
     </AuthContext.Provider>
   );
