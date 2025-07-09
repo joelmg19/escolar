@@ -7,11 +7,17 @@ export default function SignupScreen() {
   const { register } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleSignup = async () => {
+    if (password !== confirmPassword) {
+      alert('Las contrase\xC3\xB1as no coinciden');
+      return;
+    }
     try {
-      await register(email, password);
+      await register(email, password, username);
       router.replace('/(tabs)/ninos');
     } catch (e: any) {
       alert(e.message);
@@ -29,10 +35,23 @@ export default function SignupScreen() {
       />
       <TextInput
         style={styles.input}
+        placeholder="Nombre de usuario"
+        value={username}
+        onChangeText={setUsername}
+      />
+      <TextInput
+        style={styles.input}
         placeholder="Contraseña"
         secureTextEntry
         value={password}
         onChangeText={setPassword}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Repetir contraseña"
+        secureTextEntry
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
       />
       <Button title="Registrarse" onPress={handleSignup} />
     </View>
