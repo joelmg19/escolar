@@ -9,20 +9,26 @@ import {
   signOut,
   AuthCredential,
 } from 'firebase/auth';
-import { addDoc, collection } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+} from 'firebase/firestore';
 
 type AuthContextType = {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
+  register: (email: string, password: string, username: string) => Promise<void>;
   loginWithCredential: (credential: AuthCredential) => Promise<void>;
   logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  login: async () => {},
-  register: async () => {},
+  login: async (_i: string, _p: string) => {},
+  register: async (_e: string, _p: string, _u: string) => {},
   loginWithCredential: async () => {},
   logout: async () => {},
 });
@@ -35,15 +41,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return unsubscribe;
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (identifier: string, password: string) => {
+    let email = identifier;
+    if (!identifier.includes('@')) {
+      const q = query(collection(db, 'login'), where('username', '==', identifier));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) {
+        throw new Error('Usuario no encontrado');
+      }
+      email = snapshot.docs[0].data().email;
+    }
     await signInWithEmailAndPassword(auth, email, password);
   };
 
-  const register = async (email: string, password: string) => {
+  const register = async (email: string, password: string, username: string) => {
+    const q = query(collection(db, 'login'), where('username', '==', username));
+    const existing = await getDocs(q);
+    if (!existing.empty) {
+      throw new Error('El nombre de usuario ya existe');
+    }
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await addDoc(collection(db, 'login'), {
       uid: cred.user.uid,
       email: cred.user.email,
+      username,
     });
   };
 

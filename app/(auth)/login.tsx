@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'expo-router';
+// eslint-disable-next-line import/no-unresolved
 import * as Google from 'expo-auth-session/providers/google';
 import { GoogleAuthProvider } from 'firebase/auth';
 
@@ -9,12 +10,12 @@ export default function LoginScreen() {
   const { login, loginWithCredential } = useAuth();
   const router = useRouter();
 
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
 
   const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: '<YOUR_EXPO_CLIENT_ID>',
-    androidClientId: '<YOUR_ANDROID_CLIENT_ID>',
+    expoClientId: '160554863054-q8592qdm5teh0nl20tdh95uevkkkva7u.apps.googleusercontent.com',
+    androidClientId: '160554863054-q8592qdm5teh0nl20tdh95uevkkkva7u.apps.googleusercontent.com',
   });
 
   useEffect(() => {
@@ -27,11 +28,11 @@ export default function LoginScreen() {
         });
       }
     }
-  }, [response]);
+  }, [response, loginWithCredential, router]);
 
   const handleLogin = async () => {
     try {
-      await login(email, password);
+      await login(identifier, password);
       router.replace('/(tabs)/ninos');
     } catch (e: any) {
       alert(e.message);
@@ -43,9 +44,9 @@ export default function LoginScreen() {
       <Text style={styles.title}>Iniciar sesión</Text>
       <TextInput
         style={styles.input}
-        placeholder="Correo electrónico"
-        value={email}
-        onChangeText={setEmail}
+        placeholder="Correo electrónico o nombre de usuario"
+        value={identifier}
+        onChangeText={setIdentifier}
       />
       <TextInput
         style={styles.input}
