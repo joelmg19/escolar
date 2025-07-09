@@ -1,21 +1,40 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'expo-router';
+import * as Google from 'expo-auth-session/providers/google';
+import { GoogleAuthProvider } from 'firebase/auth';
 
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, loginWithCredential } = useAuth();
   const router = useRouter();
 
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
-    if (username === 'admin' && password === 'admin123') {
-      login(); // actualiza contexto
-      router.replace('/(tabs)/ninos'); // redirige
-    } else {
-      alert('Usuario o contraseña incorrectos');
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    expoClientId: '<YOUR_EXPO_CLIENT_ID>',
+    androidClientId: '<YOUR_ANDROID_CLIENT_ID>',
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.authentication || {};
+      if (id_token) {
+        const credential = GoogleAuthProvider.credential(id_token);
+        loginWithCredential(credential).then(() => {
+          router.replace('/(tabs)/ninos');
+        });
+      }
+    }
+  }, [response]);
+
+  const handleLogin = async () => {
+    try {
+      await login(email, password);
+      router.replace('/(tabs)/ninos');
+    } catch (e: any) {
+      alert(e.message);
     }
   };
 
@@ -24,9 +43,9 @@ export default function LoginScreen() {
       <Text style={styles.title}>Iniciar sesión</Text>
       <TextInput
         style={styles.input}
-        placeholder="Usuario"
-        value={username}
-        onChangeText={setUsername}
+        placeholder="Correo electrónico"
+        value={email}
+        onChangeText={setEmail}
       />
       <TextInput
         style={styles.input}
@@ -36,6 +55,15 @@ export default function LoginScreen() {
         onChangeText={setPassword}
       />
       <Button title="Iniciar sesión" onPress={handleLogin} />
+      <Button
+        title="Iniciar con Google"
+        onPress={() => promptAsync()}
+        disabled={!request}
+      />
+      <Button
+        title="Crear cuenta"
+        onPress={() => router.push('/(auth)/signup')}
+      />
     </View>
   );
 }
